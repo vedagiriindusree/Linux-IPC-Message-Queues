@@ -23,36 +23,67 @@ DEVELOPED BY:VEDAGIRI INDU SREE
 REG.NO:212223230236
 ## C program that receives a message from message queue and display them
 ```
-// C Program for Message Queue (Writer Process) 
-#include <stdio.h> 
-#include <sys/ipc.h> 
-#include <sys/msg.h> 
+// msqueue.c - Combined Writer/Reader for System V Message Queue
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 
-// structure for message queue 
-struct mesg_buffer { 
-	long mesg_type; 
-	char mesg_text[100]; 
-} message; 
-int main() 
-{ 	key_t key; 
-	int msgid;
-    // ftok to generate unique key 
-	key = ftok("progfile", 65); 
-	// msgget creates a message queue 
-	// and returns identifier 
-	msgid = msgget(key, 0666 | IPC_CREAT); 
-	message.mesg_type = 1; 
-	printf("Write Data : "); 
-	gets(message.mesg_text); 
-	// msgsnd to send message 
-	msgsnd(msgid, &message, sizeof(message), 0); 
-	// display the message 
-	printf("Data send is : %s \n", message.mesg_text); 
-	return 0; 
-} 
+struct mesg_buffer {
+    long mesg_type;
+    char mesg_text[100];
+} message;
+
+int main(int argc, char *argv[]) {
+    key_t key;
+    int msgid;
+
+    if (argc != 2) {
+        printf("Usage: %s writer|reader\n", argv[0]);
+        return 1;
+    }
+
+    key = ftok("msgq.c", 65);
+    if (key == -1) {
+        perror("ftok");
+        return 1;
+    }
+
+    msgid = msgget(key, 0666 | IPC_CREAT);
+    if (msgid == -1) {
+        perror("msgget");
+        return 1;
+    }
+
+    if (strcmp(argv[1], "writer") == 0) {
+        message.mesg_type = 1;
+        printf("Enter Message: ");
+        fgets(message.mesg_text, sizeof(message.mesg_text), stdin);
+        message.mesg_text[strcspn(message.mesg_text, "\n")] = 0; // remove newline
+        if (msgsnd(msgid, &message, sizeof(message), 0) == -1) {
+            perror("msgsnd");
+            return 1;
+        }
+        printf("Message sent: %s\n", message.mesg_text);
+    } else if (strcmp(argv[1], "reader") == 0) {
+        if (msgrcv(msgid, &message, sizeof(message), 1, 0) == -1) {
+            perror("msgrcv");
+            return 1;
+        }
+        printf("Message received: %s\n", message.mesg_text);
+        msgctl(msgid, IPC_RMID, NULL); // destroy queue
+    } else {
+        printf("Invalid argument. Use writer or reader.\n");
+        return 1;
+    }
+
+    return 0;
+}
 ```
 ## OUTPUT
-![image](https://github.com/user-attachments/assets/ca4fa16e-34e9-45e2-9568-2fd75862e79f)
+
+![WhatsApp Image 2025-05-07 at 15 13 23_6cad9357](https://github.com/user-attachments/assets/ee74b91b-b1c7-42da-b19c-b19ad559d3d9)
 
 # RESULT:
 The programs are executed successfully.
